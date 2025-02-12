@@ -1,0 +1,171 @@
+blueprint:
+  name: Zigbee2MQTT - IKEA SYMFONISK Sound Remote Gen 2 (E2123) v0.8.7
+  description: |
+    Handles playback control, volume adjustment, track navigation, and shortcut buttons for the IKEA SYMFONISK Sound Remote Gen 2 (E2123) using Zigbee2MQTT.
+    Includes handling for single, double, and long press actions with consistent logic.
+
+  domain: automation
+
+  input:
+    controller_entity:
+      name: Controller Entity
+      description: The action sensor for the IKEA SYMFONISK Sound Remote Gen 2 (E2123).
+      selector:
+        entity:
+          domain: sensor
+
+    # Playback Control
+    action_play_pause:
+      name: Play/Pause
+      description: Action to run on play/pause button press.
+      default: []
+      selector:
+        action: {}
+
+    # Volume Control
+    action_volume_up:
+      name: Volume Up
+      description: Action to run on a single press of the volume up button.
+      default: []
+      selector:
+        action: {}
+    action_volume_down:
+      name: Volume Down
+      description: Action to run on a single press of the volume down button.
+      default: []
+      selector:
+        action: {}
+    action_volume_up_hold:
+      name: Volume Up (Hold)
+      description: Action to run repeatedly while holding the volume up button.
+      default: []
+      selector:
+        action: {}
+    action_volume_down_hold:
+      name: Volume Down (Hold)
+      description: Action to run repeatedly while holding the volume down button.
+      default: []
+      selector:
+        action: {}
+
+    # Track Navigation
+    action_next_track:
+      name: Next Track
+      description: Action to run on next track button press.
+      default: []
+      selector:
+        action: {}
+    action_previous_track:
+      name: Previous Track
+      description: Action to run on previous track button press.
+      default: []
+      selector:
+        action: {}
+
+    # Shortcut 1
+    action_dots_1_single:
+      name: Shortcut 1 Single Press
+      description: Action to run on release of shortcut 1 single press.
+      default: []
+      selector:
+        action: {}
+    action_dots_1_double:
+      name: Shortcut 1 Double Press
+      description: Action to run on release of shortcut 1 double press.
+      default: []
+      selector:
+        action: {}
+    action_dots_1_long:
+      name: Shortcut 1 Long Press
+      description: Action to run on release of shortcut 1 long press.
+      default: []
+      selector:
+        action: {}
+
+    # Shortcut 2
+    action_dots_2_single:
+      name: Shortcut 2 Single Press
+      description: Action to run on release of shortcut 2 single press.
+      default: []
+      selector:
+        action: {}
+    action_dots_2_double:
+      name: Shortcut 2 Double Press
+      description: Action to run on release of shortcut 2 double press.
+      default: []
+      selector:
+        action: {}
+    action_dots_2_long:
+      name: Shortcut 2 Long Press
+      description: Action to run on release of shortcut 2 long press.
+      default: []
+      selector:
+        action: {}
+
+trigger:
+  - platform: state
+    entity_id: !input controller_entity
+
+action:
+  - variables:
+      command: "{{ trigger.to_state.state }}"
+
+  # Debug: Log the received command (Optional - for debugging only)
+  - service: system_log.write
+    data:
+      level: info
+      message: >
+        "Received command: {{ command }}"
+
+  - choose:
+      # Playback Control
+      - conditions: "{{ command == 'toggle' }}"
+        sequence: !input action_play_pause
+
+      # Volume Control
+      - conditions: "{{ command == 'volume_up' }}"
+        sequence: !input action_volume_up
+      - conditions: "{{ command == 'volume_down' }}"
+        sequence: !input action_volume_down
+      - conditions: "{{ command == 'volume_up_hold' }}"
+        sequence:
+          - repeat:
+              while:
+                condition: state
+                entity_id: !input controller_entity
+                state: "volume_up_hold"
+              sequence: !input action_volume_up_hold
+      - conditions: "{{ command == 'volume_down_hold' }}"
+        sequence:
+          - repeat:
+              while:
+                condition: state
+                entity_id: !input controller_entity
+                state: "volume_down_hold"
+              sequence: !input action_volume_down_hold
+
+      # Track Navigation
+      - conditions: "{{ command == 'track_next' }}"
+        sequence: !input action_next_track
+      - conditions: "{{ command == 'track_previous' }}"
+        sequence: !input action_previous_track
+
+      # Shortcut 1
+      - conditions: "{{ command == 'dots_1_long_release' }}"
+        sequence: !input action_dots_1_long
+
+      - conditions: "{{ command == 'dots_1_double_press' }}"
+        sequence: !input action_dots_1_double
+
+      - conditions: "{{ command == 'dots_1_short_release' }}"
+        sequence: !input action_dots_1_single
+
+      # Shortcut 2
+      - conditions: "{{ command == 'dots_2_long_release' }}"
+        sequence: !input action_dots_2_long
+
+      - conditions: "{{ command == 'dots_2_double_press' }}"
+        sequence: !input action_dots_2_double
+
+      - conditions: "{{ command == 'dots_2_short_release' }}"
+        sequence: !input action_dots_2_single
