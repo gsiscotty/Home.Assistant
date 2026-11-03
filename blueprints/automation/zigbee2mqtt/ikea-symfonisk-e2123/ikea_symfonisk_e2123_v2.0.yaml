@@ -1,0 +1,359 @@
+blueprint:
+  name: Zigbee2MQTT - IKEA SYMFONISK Sound Remote Gen 2 (E2123) v2.0
+  description: |
+    Controller automation for the IKEA SYMFONISK / SOMRIG Sound Remote Gen 2 (E2123) using Zigbee2MQTT.
+
+    - Listens to the remote's MQTT action topic, so it works on Zigbee2MQTT 1.x and 2.x
+      (the legacy action sensor is not needed).
+    - Every press runs at once. Buttons never block or cancel each other.
+    - Volume: slow clicks and fast clicks use different step sizes. Holding volume up stops
+      at the next cap above where you started (default 40 %, then 70 %, then 100 %); release
+      and hold again to pass it. Volume down has no cap. Each speaker steps from its own level.
+    - Works with both remote firmwares: the one that sends volume_up_hold and the one that
+      repeats volume_up while held.
+
+    Needs one Text helper per remote (Settings > Devices & services > Helpers > Create helper >
+    Text, max length 255). It remembers the last volume press and the level where a hold started.
+  domain: automation
+  author: gsiscotty
+  source_url: https://github.com/gsiscotty/Home.Assistant/blob/main/blueprints/automation/zigbee2mqtt/ikea-symfonisk-e2123/ikea_symfonisk_e2123_v2.0.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    remote_section:
+      name: Remote
+      icon: mdi:remote
+      input:
+        z2m_device_name:
+          name: Zigbee2MQTT device name
+          description: Friendly name of the remote in Zigbee2MQTT, exactly as shown there (for example IKEA-SOUNDREMOTE2-OFFICE-01).
+          selector:
+            text: {}
+        z2m_base_topic:
+          name: Zigbee2MQTT base topic
+          description: Only change this if Zigbee2MQTT uses a different base topic.
+          default: zigbee2mqtt
+          selector:
+            text: {}
+
+    volume_section:
+      name: Speakers and volume
+      icon: mdi:speaker
+      input:
+        media_players:
+          name: Speakers
+          description: Speakers the volume buttons control. Leave empty to use the custom volume actions further down instead.
+          default: []
+          selector:
+            entity:
+              domain: media_player
+              multiple: true
+        timing_helper:
+          name: Timing helper
+          description: Text helper (max length 255), one per remote. Remembers the last volume press and the level where a hold started.
+          selector:
+            entity:
+              domain: input_text
+        volume_step_slow:
+          name: Step for a slow click
+          default: 4
+          selector:
+            number:
+              min: 1
+              max: 20
+              step: 1
+              unit_of_measurement: "%"
+        volume_step_fast:
+          name: Step for a fast click
+          default: 3
+          selector:
+            number:
+              min: 1
+              max: 20
+              step: 1
+              unit_of_measurement: "%"
+        volume_step_hold:
+          name: Step per hold signal
+          description: While held, the remote repeats its signal every 0.2 to 0.4 seconds.
+          default: 4
+          selector:
+            number:
+              min: 1
+              max: 20
+              step: 1
+              unit_of_measurement: "%"
+        hold_window:
+          name: Hold window
+          description: Presses closer together than this count as holding the button (hold step, stops at caps). Keep it above 0.45 s, the remote's repeat jitter.
+          default: 0.5
+          selector:
+            number:
+              min: 0.3
+              max: 1
+              step: 0.05
+              unit_of_measurement: s
+        fast_click_window:
+          name: Fast click window
+          description: A click this soon after the previous volume press (but slower than the hold window) counts as fast.
+          default: 1.0
+          selector:
+            number:
+              min: 0.1
+              max: 3
+              step: 0.1
+              unit_of_measurement: s
+        volume_cap_1:
+          name: Hold cap 1
+          default: 40
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+        volume_cap_2:
+          name: Hold cap 2
+          default: 70
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+        volume_cap_3:
+          name: Hold cap 3
+          default: 100
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+        hold_gap:
+          name: New hold after
+          description: Release at least this long before holding again to pass the cap the last hold stopped at.
+          default: 0.8
+          selector:
+            number:
+              min: 0.5
+              max: 3
+              step: 0.1
+              unit_of_measurement: s
+
+    playback_section:
+      name: Playback
+      icon: mdi:play-pause
+      input:
+        action_play_pause:
+          name: Play/Pause
+          default: []
+          selector:
+            action: {}
+        action_next_track:
+          name: Next track
+          default: []
+          selector:
+            action: {}
+        action_previous_track:
+          name: Previous track
+          default: []
+          selector:
+            action: {}
+
+    custom_volume_section:
+      name: Custom volume actions
+      description: Only used when no speakers are selected above. Hold actions run once per hold signal.
+      icon: mdi:volume-high
+      collapsed: true
+      input:
+        action_volume_up:
+          name: Volume up (click)
+          default: []
+          selector:
+            action: {}
+        action_volume_down:
+          name: Volume down (click)
+          default: []
+          selector:
+            action: {}
+        action_volume_up_hold:
+          name: Volume up (hold)
+          default: []
+          selector:
+            action: {}
+        action_volume_down_hold:
+          name: Volume down (hold)
+          default: []
+          selector:
+            action: {}
+
+    shortcut_1_section:
+      name: Shortcut button 1 (one dot)
+      icon: mdi:circle-small
+      input:
+        action_dots_1_single:
+          name: Single press
+          default: []
+          selector:
+            action: {}
+        action_dots_1_double:
+          name: Double press
+          default: []
+          selector:
+            action: {}
+        action_dots_1_long:
+          name: Long press
+          default: []
+          selector:
+            action: {}
+
+    shortcut_2_section:
+      name: Shortcut button 2 (two dots)
+      icon: mdi:circle-double
+      input:
+        action_dots_2_single:
+          name: Single press
+          default: []
+          selector:
+            action: {}
+        action_dots_2_double:
+          name: Double press
+          default: []
+          selector:
+            action: {}
+        action_dots_2_long:
+          name: Long press
+          default: []
+          selector:
+            action: {}
+
+# parallel: every press runs at once; single dropped presses ("Already running"),
+# queued made presses wait, restart let one button cancel another.
+mode: parallel
+max: 20
+max_exceeded: silent
+
+trigger_variables:
+  base_topic: !input z2m_base_topic
+  device_name: !input z2m_device_name
+
+triggers:
+  - trigger: mqtt
+    topic: "{{ base_topic }}/{{ device_name }}/action"
+
+conditions:
+  - condition: template
+    value_template: "{{ trigger.payload not in ['', 'None', 'null'] }}"
+
+variables:
+  command: "{{ trigger.payload }}"
+  players: !input media_players
+  helper: !input timing_helper
+  step_slow: !input volume_step_slow
+  step_fast: !input volume_step_fast
+  step_hold: !input volume_step_hold
+  hold_window: !input hold_window
+  fast_window: !input fast_click_window
+  gap: !input hold_gap
+  cap_1: !input volume_cap_1
+  cap_2: !input volume_cap_2
+  cap_3: !input volume_cap_3
+
+actions:
+  - choose:
+      # Built-in volume control: one step per signal, no loops, so presses never pile up.
+      # Some remote firmwares send volume_up_hold while held, others repeat volume_up every
+      # 0.2-0.4 s. So "hold" = a _hold signal or a press within the hold window. The helper keeps
+      # the levels where the press started ('b'); the cap is the next one above that level, and
+      # 'b' is kept until the button was released longer than the re-hold gap, so a lost Zigbee
+      # message can never pass a cap.
+      - conditions:
+          - condition: template
+            value_template: "{{ command in ['volume_up', 'volume_down', 'volume_up_hold', 'volume_down_hold'] and players | count > 0 }}"
+        sequence:
+          - variables:
+              now_ts: "{{ as_timestamp(now()) }}"
+              memory: >
+                {% set raw = states(helper) %}
+                {% if raw.startswith('{') %}{{ raw | from_json }}{% else %}{{ {} }}{% endif %}
+              since_last: "{{ now_ts - (memory.get('t', 0) | float(0)) }}"
+              is_up: "{{ command.startswith('volume_up') }}"
+              is_hold: "{{ command.endswith('_hold') or since_last < hold_window }}"
+              step: >
+                {% if is_hold %}{{ step_hold / 100 }}
+                {% elif since_last < fast_window %}{{ step_fast / 100 }}
+                {% else %}{{ step_slow / 100 }}{% endif %}
+              caps: "{{ [cap_1, cap_2, cap_3] | map('float') | map('multiply', 0.01) | sort | list }}"
+              start_levels: >
+                {% set old = memory.get('b', []) %}
+                {% if since_last < gap and old | count == players | count %}{{ old }}
+                {% else %}{{ players | map('state_attr', 'volume_level') | map('float', 0) | map('round', 2) | list }}{% endif %}
+          - action: input_text.set_value
+            target:
+              entity_id: "{{ helper }}"
+            data:
+              value: "{{ {'t': now_ts | round(2), 'b': start_levels} | to_json }}"
+          - repeat:
+              for_each: "{{ players }}"
+              sequence:
+                - variables:
+                    current: "{{ state_attr(repeat.item, 'volume_level') }}"
+                    level: >
+                      {% set c = current | float(0) %}
+                      {% if not is_up %}
+                        {{ [c - step, 0] | max | round(2) }}
+                      {% elif not is_hold %}
+                        {{ [c + step, 1] | min | round(2) }}
+                      {% else %}
+                        {% set b = start_levels[repeat.index - 1] | float(c) %}
+                        {% set above = caps | select('>', b + 0.005) | list %}
+                        {% set cap = above | first if above else 1 %}
+                        {% if c >= cap - 0.005 %}
+                          {{ c }}
+                        {% else %}
+                          {{ [c + step, cap] | min | round(2) }}
+                        {% endif %}
+                      {% endif %}
+                - if:
+                    - condition: template
+                      value_template: "{{ current is number and (level | float(0) - current) | abs > 0.001 }}"
+                  then:
+                    - action: media_player.volume_set
+                      target:
+                        entity_id: "{{ repeat.item }}"
+                      data:
+                        volume_level: "{{ level }}"
+
+      # Custom volume actions, used when no speakers are selected.
+      - conditions: "{{ command == 'volume_up' }}"
+        sequence: !input action_volume_up
+      - conditions: "{{ command == 'volume_down' }}"
+        sequence: !input action_volume_down
+      - conditions: "{{ command == 'volume_up_hold' }}"
+        sequence: !input action_volume_up_hold
+      - conditions: "{{ command == 'volume_down_hold' }}"
+        sequence: !input action_volume_down_hold
+
+      # Playback
+      - conditions: "{{ command == 'toggle' }}"
+        sequence: !input action_play_pause
+      - conditions: "{{ command == 'track_next' }}"
+        sequence: !input action_next_track
+      - conditions: "{{ command == 'track_previous' }}"
+        sequence: !input action_previous_track
+
+      # Shortcut 1
+      - conditions: "{{ command == 'dots_1_short_release' }}"
+        sequence: !input action_dots_1_single
+      - conditions: "{{ command == 'dots_1_double_press' }}"
+        sequence: !input action_dots_1_double
+      - conditions: "{{ command == 'dots_1_long_release' }}"
+        sequence: !input action_dots_1_long
+
+      # Shortcut 2
+      - conditions: "{{ command == 'dots_2_short_release' }}"
+        sequence: !input action_dots_2_single
+      - conditions: "{{ command == 'dots_2_double_press' }}"
+        sequence: !input action_dots_2_double
+      - conditions: "{{ command == 'dots_2_long_release' }}"
+        sequence: !input action_dots_2_long
